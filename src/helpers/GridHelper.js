@@ -19,8 +19,8 @@ class GridHelper extends LineSegments {
 
 		for ( let i = 0, j = 0, k = - halfSize; i <= divisions; i ++, k += step ) {
 
-			vertices.push( - halfSize, 0, k, halfSize, 0, k );
-			vertices.push( k, 0, - halfSize, k, 0, halfSize );
+			vertices.push( - halfSize, k, 0, halfSize, k, 0 );
+			vertices.push( k, - halfSize, 0, k, halfSize, 0 );
 
 			const color = i === center ? color1 : color2;
 
