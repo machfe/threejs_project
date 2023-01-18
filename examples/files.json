@@ -1,5 +1,8 @@
 {
 	"webgl": [
+		"demo_skybox",
+		"demo_rain",
+		"demo_physical",
 		"webgl_animation_keyframes",
 		"webgl_animation_skinning_blending",
 		"webgl_animation_skinning_additive_blending",
