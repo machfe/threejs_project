@@ -1,109 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<title>three.js webgl - geometry - cube</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link type="text/css" rel="stylesheet" href="main.css">
-	</head>
-	<body>
 
-		<!-- Import maps polyfill -->
-		<!-- Remove this when import maps will be widely supported -->
-		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+<head>
+	<title>three.js webgl - rain</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+</head>
 
-		<script type="importmap">
-			{
-				"imports": {
-					"three": "../build/three.module.js",
-					"three/addons/": "./jsm/"
-				}
+<body>
+
+	<div id="container"></div>
+	<div id="info">
+		<div id="notSupported" style="display:none">Sorry your graphics card + browser does not support hardware
+			instancing</div>
+	</div>
+
+	<script id="vertexShader" type="x-shader/x-vertex">
+		precision highp float;
+	
+		uniform vec3 offset;
+		uniform float width;
+		uniform mat4 projectionMatrix;
+		uniform mat4 view;
+		uniform float time;
+		uniform vec3 cameraPosition;
+		
+		attribute vec3 position;
+		attribute float instanceFeatureAttribute;
+	
+		varying vec2 vUv;
+
+		vec3 hash31(float p) {
+			vec3 p3 = fract(vec3(p) * vec3(0.1031, 0.1030, 0.0973));
+			p3 += dot(p3, p3.yzx + 33.33);
+			return fract((p3.xxy + p3.yzz) * p3.zyx);
+	  	}
+	
+		float hash11(float p) {
+		p = fract(p * 0.1031);
+			p *= p + 33.33;
+			p *= p + p;
+			return fract(p);
+		}
+	
+		//https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
+		vec3 rotateVectorByQuaternion(vec3 v, vec4 q) {
+			return 2.0 * cross(q.xyz, v * q.w + cross(q.xyz, v)) + v;
+		}
+	  
+	  	void main() {
+			vUv = position.xz;
+			vec3 rand = hash31(instanceFeatureAttribute);
+	    
+			// Set random position for all particles
+	    
+			// The hash function space is not high resolution so offset particles by an additional random value
+			// This creates grids of 1000 particles which are shifted by random hundreths of the tile width
+			// overlaying multiple identical but offset grids
+			vec3 randomPosition = 2.0 * (rand + (0.01 + 0.01 * rand) * floor(0.001 * instanceFeatureAttribute)) - 1.0;
+	    
+			// Random orientation of rain drops
+			float angle = 3.1415 * hash11(instanceFeatureAttribute);
+			vec3 up = vec3(0.0, 0.0, 1.0);
+	    
+			// Gravity and wind direction
+			vec3 direction = normalize(cameraPosition);
+			vec3 tangent = normalize(cross(direction, up));
+			
+			// Gravity
+			vec3 animatedPos = randomPosition + direction * -time/10.0;
+	    
+			// Rain particles fall straight down and are randomly oriented
+	    
+			// Snow particles have random sinusoid trajectories and are rotated to face the camera
+	    
+			// Random rotation for particle
+			vec3 rotationAxis = up;
+			vec4 quat = vec4(rotationAxis * sin(angle), cos(angle));
+			vec3 transformedPos = rotateVectorByQuaternion(vec3(0.2, 0.2, 4.0) * (position - vec3(0.5, 0.0, 0.5)), quat);
+	    
+			// Rotate particle to planetary position
+	    
+			rotationAxis = tangent;
+			angle = 0.5 * -acos(dot(direction, up));
+			quat = vec4(rotationAxis * sin(angle), cos(angle));
+			transformedPos = rotateVectorByQuaternion(transformedPos, quat);
+			vec4 pos = mat4(mat3(view)) * vec4(transformedPos + (mod(width * animatedPos - offset, width) - 0.5 * width), 1.0);
+			gl_Position = projectionMatrix * pos;
+		}
+	</script>
+
+	<script id="fragmentShader" type="x-shader/x-fragment">
+
+		precision highp float;
+
+		varying vec2 vUv;
+
+		void main() {
+			if(vUv.x < 0.0 || vUv.y < 0.0) {
+				discard;
 			}
-		</script>
+	  
+			float opacity = 1.0;
+			vec3 particleColor = vec3(1.0, 0.0, 0.0);
+			particleColor = vec3(0.7434, 0.7434, 0.7434);
+			float d = length(vUv - vec2(0.5));
 
-		<script type="module">
+			// d = 0.35 * smoothstep(0.5, 0.0, d);
+			d = 0.65 * smoothstep(0.5, 0.0, d);
+	  
+			gl_FragColor =  opacity * vec4(particleColor * d, d);
+			//gl_FragColor =  vec4(1.0, 0.0, 0.0, 1.0);
+		}
+	</script>
 
-			import * as THREE from 'three';
-			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-			import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+	<!-- Import maps polyfill -->
+	<!-- Remove this when import maps will be widely supported -->
+	<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
 
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
 
-			let camera, scene, renderer;
-			let mesh;
+	<script type="module">
+		import * as THREE from 'three';
 
-			init();
-			animate();
+		import Stats from 'three/addons/libs/stats.module.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-			function init() {
+		let container, stats;
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-				camera.position.y = -400;
-				camera.lookAt(0,0,0);
+		let camera, matView, scene, renderer;
 
-				scene = new THREE.Scene();
+		init();
+		animate();
 
-				new RGBELoader()
-					.setPath('textures/equirectangular/')
-					.load('quarry_01_1k.hdr', function (texture) {
+		 
 
-						texture.mapping = THREE.EquirectangularReflectionMapping;
+		function init() {
 
-						scene.background = texture;
-						scene.environment = texture;
-					});
+			container = document.getElementById('container');
 
-				const texture = new THREE.TextureLoader().load( 'textures/crate.gif' );
+			
+			// proj = [2.1406, 0, 0, 0, 0, 4.3538, 0, 0, 0, 0, -1.0001, -1, 0, 0, -4.0002, 0]
+			camera = new THREE.PerspectiveCamera(25.87, 2.0339, 2, 40002);
+			//camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 2, 40002);
+			camera.position.z = 2;
 
-				const geometry = new THREE.BoxGeometry( 200, 200, 200 );
-				const material = new THREE.MeshBasicMaterial( { map: texture } );
+			
+ 
+			//========================================================================================
+			/*
+			[ -0.2504,   0.9597,  0.1276,  0, 
+			   0.6239,   0.0592,  0.7792, -6377381.5, 
+			   0.7403,   0.2747, -0.6136,  101167.3359, 
+			   0,        0,       0,       1           ]
+			*/
 
-				mesh = new THREE.Mesh( geometry, material );
-				scene.add( mesh );
+			var matT  = new THREE.Matrix4();
+			matT.makeTranslation(0, -6377381.5, 101167.3359);
 
-				const grid = new THREE.GridHelper( 600, 30, 0x888888, 0x444444 );
-				scene.add( grid );
+			var matR  = new THREE.Matrix4();
+			var rotate = new THREE.Quaternion(0.5709563792816414,  0.6934009490437115, 0.3799840350153501, -0.2209031485765008);
+			matR.makeRotationFromQuaternion(rotate);
 
-				const axes = new THREE.AxesHelper( 400 );
-				scene.add( axes );
+			matView = new THREE.Matrix4();
+			matView.multiplyMatrices(matT, matR);
+			//==========================================================================================
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.body.appendChild( renderer.domElement );
+			scene = new THREE.Scene();
 
-				//
-				const controls = new OrbitControls( camera, renderer.domElement );
-				controls.minDistance = 200;
-				controls.maxDistance = 400;
-				controls.target.set( 0, 0.5, - 0.2 );
-				controls.update();
+			// geometry
+			const instances = 87500;
 
+			const positions = [];
+			const instanceIndices = []; 
 
-				window.addEventListener( 'resize', onWindowResize );
+			positions.push(-1, 0,  1);
+			positions.push( 1, 0, -1);
+			positions.push( 1, 0,  1);
+
+			// instanced attributes
+			for (let r = 0; r < instances; r++) {
+				instanceIndices.push(r);
+			}
+
+			const geometry = new THREE.InstancedBufferGeometry();
+			geometry.instanceCount = instances; // set so its initalized for dat.GUI, will be set in first draw otherwise
+
+			geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+			geometry.setAttribute('instanceFeatureAttribute', new THREE.InstancedBufferAttribute(new Float32Array(instanceIndices), 1));
+
+			// material
+			const material = new THREE.RawShaderMaterial({
+				uniforms: {
+					'view': { value: new THREE.Matrix4(-0.2504, 0.6239, 0.7403, 0, 0.9597, 0.0592, 0.2747, 0, 0.1276, 0.7792, -0.6136, 0, 0, -6377381.5000, 101167.3359, 1 )},
+					'cameraPosition': { value: new THREE.Vector3(3904132.7500, 349697, 5031569 )},
+					'offset': { value: new THREE.Vector3(132.8159, 196.9854, 68.9722 )},
+					'time': { value: 1.0 },
+					'width': { value: 500},
+				},
+				vertexShader: document.getElementById('vertexShader').textContent,
+				fragmentShader: document.getElementById('fragmentShader').textContent,
+				transparent: true
+
+			});
+
+			//
+
+			const mesh = new THREE.Mesh(geometry, material);
+			scene.add(mesh);
+
+			//
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+
+			if (renderer.capabilities.isWebGL2 === false && renderer.extensions.has('ANGLE_instanced_arrays') === false) {
+
+				document.getElementById('notSupported').style.display = '';
+				return;
 
 			}
 
-			function onWindowResize() {
+			//
+			const gui = new GUI({ width: 350 });
+			gui.add(geometry, 'instanceCount', 0, instances);
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+			//
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+			stats = new Stats();
+			container.appendChild(stats.dom);
 
-			}
+			//
+			window.addEventListener('resize', onWindowResize);
 
-			function animate() {
+		}
 
-				requestAnimationFrame( animate );
+		function onWindowResize() {
 
-				mesh.rotation.x += 0.005;
-				mesh.rotation.z += 0.01;
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
 
-				renderer.render( scene, camera );
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
 
-			}
+		//
 
-		</script>
+		function animate() {
+			requestAnimationFrame(animate);
 
-	</body>
+			render();
+
+			stats.update();
+		}
+
+		function render() {
+			const time = performance.now();
+
+			const object = scene.children[0];
+
+			object.material.uniforms['view'].value.copy(matView);
+			object.material.uniforms['cameraPosition'].value.set(3904132.7500, 349697, 5031569);
+			object.material.uniforms['offset'].value.set(132.8159, 196.9854, 68.9722 );
+			object.material.uniforms['time'].value = time;
+			object.material.uniforms['width'].value = 500; 
+
+			renderer.render(scene, camera);
+		}
+
+	</script>
+
+</body>
+
 </html>
