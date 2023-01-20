@@ -42,6 +42,7 @@
 
 				scene = new THREE.Scene();
 
+				/*
 				new RGBELoader()
 					.setPath('textures/equirectangular/')
 					.load('quarry_01_1k.hdr', function (texture) {
@@ -51,6 +52,18 @@
 						scene.background = texture;
 						scene.environment = texture;
 					});
+				*/	
+
+				const cubeTextureLoader = new THREE.CubeTextureLoader();
+				cubeTextureLoader.setPath( 'textures/cube/Park2/' );
+
+				const cubeTexture = cubeTextureLoader.load( [
+					'posx.jpg', 'negx.jpg',
+					'posy.jpg', 'negy.jpg',
+					'posz.jpg', 'negz.jpg'
+				] );
+
+				scene.background = cubeTexture;
 
 				const texture = new THREE.TextureLoader().load( 'textures/crate.gif' );
 
@@ -73,9 +86,9 @@
 
 				//
 				const controls = new OrbitControls( camera, renderer.domElement );
-				controls.minDistance = 200;
-				controls.maxDistance = 400;
-				controls.target.set( 0, 0.5, - 0.2 );
+				controls.minDistance = 100;
+				controls.maxDistance = 600;
+				controls.target.set( 0.0, 0.0, 0.0 );
 				controls.update();
 
 
@@ -94,12 +107,12 @@
 
 			function animate() {
 
-				requestAnimationFrame( animate );
-
 				mesh.rotation.x += 0.005;
 				mesh.rotation.z += 0.01;
 
 				renderer.render( scene, camera );
+
+				requestAnimationFrame( animate );
 
 			}
 
