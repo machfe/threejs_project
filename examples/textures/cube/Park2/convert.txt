@@ -1,0 +1,10 @@
+ 
+posy.jpg - >  posz.jpg 
+posz.jpg - >  negy.jpg
+
+negy.jpg - >  negz.jpg
+negz.jpg - >  posy.jpg
+
+posx 左旋转90度
+negx 右旋转90度
+posy 旋转180度
