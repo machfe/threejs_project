@@ -1,6 +1,7 @@
 {
 	"webgl": [
 		"demo_skybox",
+		"demo_envmaps",
 		"demo_rain",
 		"demo_physical",
 		"webgl_animation_keyframes",
