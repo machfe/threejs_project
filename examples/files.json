@@ -1,5 +1,6 @@
 {
 	"webgl": [
+		"demo_night",
 		"demo_skybox",
 		"demo_envmaps",
 		"demo_rain",
